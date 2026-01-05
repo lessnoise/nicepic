@@ -1,6 +1,6 @@
-import React, { useRef, useEffect, useState } from 'react';
+import React, { useRef, useEffect, useState, useMemo } from 'react';
 import { AppState, ASPECT_RATIOS } from '../types';
-import { Upload, Plus, Loader2 } from 'lucide-react';
+import { Plus, Loader2 } from 'lucide-react';
 import { translations } from '../utils/translations';
 
 interface PreviewAreaProps {
@@ -18,29 +18,38 @@ const PreviewArea: React.FC<PreviewAreaProps> = ({ state, onUpload, t, isProcess
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Background Styles
-  const backgroundStyle: React.CSSProperties = state.bgType === 'solid' 
-    ? { backgroundColor: state.bgColor }
-    : { backgroundImage: `linear-gradient(${state.gradientAngle}deg, ${state.gradientStart}, ${state.gradientEnd})` };
+  // Memoize ratioVal to avoid recalculation
+  const ratioVal = useMemo(() => {
+    return state.aspectRatio === 'auto' && state.imageSrc ? undefined : ASPECT_RATIOS[state.aspectRatio];
+  }, [state.aspectRatio, state.imageSrc]);
 
-  const ratioVal = state.aspectRatio === 'auto' && state.imageSrc ? undefined : ASPECT_RATIOS[state.aspectRatio];
+  // Memoize Background Styles
+  const backgroundStyle: React.CSSProperties = useMemo(() => {
+    return state.bgType === 'solid' 
+      ? { backgroundColor: state.bgColor }
+      : { backgroundImage: `linear-gradient(${state.gradientAngle}deg, ${state.gradientStart}, ${state.gradientEnd})` };
+  }, [state.bgType, state.bgColor, state.gradientAngle, state.gradientStart, state.gradientEnd]);
 
-  // Dynamic Noise SVG
-  const baseFreq = 2.0 - (state.noiseRoughness * 1.5);
-  const noiseSvg = `
-    <svg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'>
-      <filter id='noiseFilter'>
-        <feTurbulence type='fractalNoise' baseFrequency='${baseFreq}' numOctaves='3' stitchTiles='stitch'/>
-        <feColorMatrix type="saturate" values="0"/>
-      </filter>
-      <rect width='100%' height='100%' filter='url(#noiseFilter)' opacity='${state.noiseOpacity}'/>
-    </svg>
-  `;
-  const noiseBg = `url("data:image/svg+xml;charset=utf-8,${encodeURIComponent(noiseSvg)}")`;
+  // Memoize Dynamic Noise SVG
+  const noiseBg = useMemo(() => {
+    const baseFreq = 2.0 - (state.noiseRoughness * 1.5);
+    const noiseSvg = `
+      <svg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'>
+        <filter id='noiseFilter'>
+          <feTurbulence type='fractalNoise' baseFrequency='${baseFreq}' numOctaves='3' stitchTiles='stitch'/>
+          <feColorMatrix type="saturate" values="0"/>
+        </filter>
+        <rect width='100%' height='100%' filter='url(#noiseFilter)' opacity='${state.noiseOpacity}'/>
+      </svg>
+    `;
+    return `url("data:image/svg+xml;charset=utf-8,${encodeURIComponent(noiseSvg)}")`;
+  }, [state.noiseRoughness, state.noiseOpacity]);
 
-  // Scale logic
+  // Scale logic - optimized with requestAnimationFrame
   useEffect(() => {
     if (!containerRef.current) return;
+    
+    let rafId: number | null = null;
     
     const updateScale = () => {
       const container = containerRef.current!;
@@ -87,21 +96,32 @@ const PreviewArea: React.FC<PreviewAreaProps> = ({ state, onUpload, t, isProcess
       // Allow scale to go higher (up to 0.95) to fill screens better, but ensure padding
       const newFitScale = Math.min(scaleW, scaleH, 0.95); 
       
-      setFitScale(newFitScale);
-      setDimensions({ width: baseW, height: baseH });
+      // Batch state updates using requestAnimationFrame
+      rafId = requestAnimationFrame(() => {
+        setFitScale(newFitScale);
+        setDimensions({ width: baseW, height: baseH });
+      });
     };
 
     updateScale();
-    const observer = new ResizeObserver(updateScale);
+    const observer = new ResizeObserver(() => {
+      // Debounce ResizeObserver updates
+      if (rafId) cancelAnimationFrame(rafId);
+      rafId = requestAnimationFrame(updateScale);
+    });
+    
     if (containerRef.current?.parentElement) {
       observer.observe(containerRef.current.parentElement);
     }
     
-    return () => observer.disconnect();
+    return () => {
+      observer.disconnect();
+      if (rafId) cancelAnimationFrame(rafId);
+    };
   }, [state.aspectRatio, ratioVal, state.imageSrc, imgLoadTrigger]); 
 
-  // Frame Style CSS Logic
-  const getFrameStyleCSS = (): React.CSSProperties => {
+  // Memoize Frame Style CSS Logic
+  const frameStyleCSS = useMemo((): React.CSSProperties => {
       // CSS display logic should align visually with canvas logic roughly
       const minDim = Math.min(dimensions.width, dimensions.height);
       const baseShadow = `0px ${state.shadow * 0.1}px ${state.shadow * 0.25}px rgba(0,0,0,0.4)`;
@@ -132,9 +152,7 @@ const PreviewArea: React.FC<PreviewAreaProps> = ({ state, onUpload, t, isProcess
                   boxShadow: baseShadow
               };
       }
-  };
-
-  const frameStyleCSS = getFrameStyleCSS();
+  }, [dimensions.width, dimensions.height, state.shadow, state.borderRadius, state.frameStyle]);
 
   return (
     <div 
@@ -159,10 +177,11 @@ const PreviewArea: React.FC<PreviewAreaProps> = ({ state, onUpload, t, isProcess
           left: '50%',
           top: '50%',
           transform: `translate(-50%, -50%) scale(${fitScale})`,
-          transition: 'width 0.4s cubic-bezier(0.2, 0, 0.2, 1), height 0.4s cubic-bezier(0.2, 0, 0.2, 1), transform 0.4s cubic-bezier(0.2, 0, 0.2, 1)',
+          transition: 'width 0.3s cubic-bezier(0.4, 0, 0.2, 1), height 0.3s cubic-bezier(0.4, 0, 0.2, 1), transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+          willChange: 'width, height, transform',
           ...backgroundStyle
         }}
-        className="shadow-2xl overflow-hidden will-change-transform ring-1 ring-white/10 flex items-center justify-center transition-colors duration-500"
+        className="shadow-2xl overflow-hidden ring-1 ring-white/10 flex items-center justify-center transition-colors duration-500"
       >
         <div 
             className="absolute inset-0 pointer-events-none z-10 mix-blend-overlay"
