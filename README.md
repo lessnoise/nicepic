@@ -21,17 +21,17 @@
 
 ## English
 
-An elegant screenshot beautification tool that adds gradient backgrounds, shadows, and noise textures to your screenshots.
+A professional screenshot beautification tool that enhances your screenshots with gradient backgrounds, customizable shadows, and noise textures.
 
 ### 🚀 Live Demo
 
 **Live Demo:** https://lessnoise.github.io/nicepic/
 
-### 💡 Project Description
+### 💡 About This Project
 
-This project is created with **100% Vibe coding**, developed using the following tools:
-- **AI Studio** - AI-assisted development
-- **Cursor** - AI-powered code editor
+NicePic is a modern web application built with cutting-edge technologies, leveraging AI-assisted development tools for optimal code quality and user experience:
+- **AI Studio** - Advanced AI development platform
+- **Cursor** - Intelligent code editor
 
 ### 🛠️ Run Locally
 
@@ -69,17 +69,17 @@ This project is licensed under the MIT License.
 
 ## 中文
 
-一个优雅的截图美化工具，为你的截图添加渐变背景、阴影和噪点纹理。
+一款专业的截图美化工具，为您的截图添加渐变背景、可定制阴影和噪点纹理效果。
 
 ### 🚀 在线体验
 
 **体验地址：** https://lessnoise.github.io/nicepic/
 
-### 💡 项目说明
+### 💡 关于本项目
 
-本项目由 **100% Vibe coding** 制作，使用以下工具开发：
-- **AI Studio** - AI 辅助开发
-- **Cursor** - AI 代码编辑器
+NicePic 是一款采用前沿技术构建的现代化 Web 应用，借助 AI 辅助开发工具以确保最佳的代码质量和用户体验：
+- **AI Studio** - 先进的 AI 开发平台
+- **Cursor** - 智能代码编辑器
 
 ### 🛠️ 本地运行
 
